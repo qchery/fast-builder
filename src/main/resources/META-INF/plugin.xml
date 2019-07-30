@@ -1,0 +1,26 @@
+<idea-plugin>
+    <id>com.qchery.idea.plugin.FastBuilder</id>
+    <name>JsonEntity</name>
+    <vendor email="chinrui1016@163.com" url="http://blog.csdn.net/chinrui">Chery</vendor>
+
+    <description><![CDATA[
+        FastBuilder is a tiny plugin to generate Builder for the JavaBean.
+    ]]></description>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <!-- uncomment to enable plugin in all products
+    <depends>com.intellij.modules.lang</depends>
+    -->
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+    </extensions>
+
+    <actions>
+        <action id="FastBuilderAction" class="com.qchery.idea.plugin.FastBuilderAction" text="FastBuilder"
+                description="Auto Generate Builder For JavaBean">
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

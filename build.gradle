@@ -1,0 +1,44 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        maven { url "http://maven.aliyun.com/nexus/content/groups/public/" }
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'java'
+    id 'idea'
+    id 'org.jetbrains.intellij' version '0.4.8'
+}
+
+intellij {
+    version 'IC-2018.2.4'
+    plugins 'coverage'
+    pluginName 'JsonEntity'
+}
+
+group 'com.qchery'
+version '1.0.0'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenLocal()
+    maven { url "http://maven.aliyun.com/nexus/content/groups/public/" }
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+patchPluginXml {
+    changeNotes """
+      Add change notes here.<br>
+      <em>most HTML tags may be used</em>"""
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
