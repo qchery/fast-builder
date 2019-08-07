@@ -12,16 +12,28 @@ plugins {
     id 'org.jetbrains.intellij' version '0.4.8'
 }
 
+def ideaVersionExternalDefinition = System.getenv("IDEA_VERSION")
+ideaVersion = ideaVersionExternalDefinition ? ideaVersionExternalDefinition : ideaVersion
+def isEAP = ideaVersion.contains("LATEST-EAP-SNAPSHOT") || ideaVersion.take(4).contains(".")
+def artifactVersion = pluginVersion + "-" + (isEAP ? "EAP" : ideaVersion)
+println "IdeaVersion is : ${ideaVersion}"
+println "ArtifactVersion is : ${artifactVersion}"
+
 intellij {
-    version 'IC-2018.2.4'
+    version ideaVersion
+    println "Building for IntelliJ version: ${version}"
+
+    pluginName pluginName
+    updateSinceUntilBuild true
+    sameSinceUntilBuild false
+
     plugins 'coverage'
-    pluginName 'JsonEntity'
 }
 
-group 'com.qchery'
-version '1.0.0'
+group pluginGroup
+version pluginVersion
 
-sourceCompatibility = 1.8
+sourceCompatibility = JavaVersion.VERSION_1_8
 
 repositories {
     mavenLocal()
@@ -34,9 +46,19 @@ dependencies {
 }
 
 patchPluginXml {
-    changeNotes """
-      Add change notes here.<br>
-      <em>most HTML tags may be used</em>"""
+    version artifactVersion
+
+    if (isEAP || (ideaVersion == lastReleaseVersion)) {
+        untilBuild ""
+    }
+
+    pluginDescription(file(descriptionFile).text)
+    changeNotes(file(changesFile).text)
+}
+
+publishPlugin {
+    username System.getenv('IJ_REPO_USERNAME')
+    password System.getenv('IJ_REPO_PASSWORD')
 }
 
 tasks.withType(JavaCompile) {
