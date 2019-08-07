@@ -1,0 +1,37 @@
+public static class Builder {
+
+#foreach($field in $fields)
+private $field.type $field.name;
+#end
+
+#foreach($field in $fields)
+#set($paramName = $helper.getParamName($field, $project))
+public ##
+#if($field.modifierStatic)
+static void ##
+#else
+  Builder ##
+#end
+set$StringUtil.capitalizeWithJavaBeanConvention($StringUtil.sanitizeJavaIdentifier($helper.getPropertyName($field, $project)))($field.type $paramName) {
+#if ($field.name == $paramName)
+  #if (!$field.modifierStatic)
+  this.##
+  #else
+    $classname.##
+  #end
+#end
+$field.name = $paramName;
+#if(!$field.modifierStatic)
+return this;
+#end
+}
+#end
+
+public $classname build() {
+  $classname result = new $classname();
+#foreach($field in $fields)
+  result.$field.name = this.$field.name;
+#end
+  return result;
+}
+}

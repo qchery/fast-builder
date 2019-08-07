@@ -14,7 +14,8 @@
     -->
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Add your extensions here -->
+        <applicationService serviceInterface="com.qchery.idea.plugin.handler.BuildTemplatesManager"
+                            serviceImplementation="com.qchery.idea.plugin.handler.BuildTemplatesManager"/>
     </extensions>
 
     <actions>
