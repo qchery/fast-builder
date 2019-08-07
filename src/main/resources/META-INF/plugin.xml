@@ -1,6 +1,6 @@
 <idea-plugin>
     <id>com.qchery.idea.plugin.FastBuilder</id>
-    <name>JsonEntity</name>
+    <name>FastBuilder</name>
     <vendor email="chinrui1016@163.com" url="http://blog.csdn.net/chinrui">Chery</vendor>
 
     <description><![CDATA[
@@ -14,8 +14,8 @@
     -->
 
     <extensions defaultExtensionNs="com.intellij">
-        <applicationService serviceInterface="com.qchery.idea.plugin.handler.BuildTemplatesManager"
-                            serviceImplementation="com.qchery.idea.plugin.handler.BuildTemplatesManager"/>
+        <applicationService serviceImplementation="com.qchery.idea.plugin.handler.BuilderTemplatesManager"/>
+        <applicationService serviceImplementation="com.qchery.idea.plugin.handler.BuilderInitTemplatesManager"/>
     </extensions>
 
     <actions>

@@ -1,76 +1,117 @@
 package com.qchery.idea.plugin.handler;
 
-import com.intellij.codeInsight.CodeInsightActionHandler;
-import com.intellij.codeInsight.generation.OverrideImplementUtil;
-import com.intellij.codeInsight.hint.HintManager;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.command.CommandProcessor;
-import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.editor.EditorModificationUtil;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.codeInsight.CodeInsightBundle;
+import com.intellij.codeInsight.daemon.ImplicitUsageProvider;
+import com.intellij.codeInsight.generation.*;
+import com.intellij.openapi.extensions.Extensions;
 import com.intellij.openapi.project.Project;
-import com.intellij.psi.JavaPsiFacade;
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiMethod;
+import com.intellij.psi.*;
+import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.java.generate.GenerationUtil;
-import org.jetbrains.java.generate.exception.GenerateCodeException;
-import org.jetbrains.java.generate.template.TemplateResource;
 
-import java.util.Arrays;
+import javax.swing.*;
+import java.awt.*;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * @author Chery
  * @date 2019/7/29
  */
-public class FastBuilderActionHandler implements CodeInsightActionHandler {
+public class FastBuilderActionHandler extends GenerateGetterSetterHandlerBase {
 
-    private Logger log = Logger.getInstance(FastBuilderActionHandler.class);
-
-    @Override
-    public void invoke(@NotNull Project project, @NotNull Editor editor, @NotNull PsiFile file) {
-        if (!EditorModificationUtil.checkModificationAllowed(editor)) return;
-        if (!FileDocumentManager.getInstance().requestWriting(editor.getDocument(), project)) {
-            return;
-        }
-        final PsiClass aClass = OverrideImplementUtil.getContextClass(project, editor, file, false);
-        if (aClass == null || aClass.isInterface()) return; //?
-        log.assertTrue(aClass.isValid());
-        log.assertTrue(aClass.getContainingFile() != null);
-
-        CommandProcessor.getInstance().executeCommand(project, () -> {
-            final int offset = editor.getCaretModel().getOffset();
-            try {
-                doGenerate(project, aClass);
-            } catch (GenerateCodeException e) {
-                final String message = e.getMessage();
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    if (!editor.isDisposed()) {
-                        editor.getCaretModel().moveToOffset(offset);
-                        HintManager.getInstance().showErrorHint(editor, message);
-                    }
-                }, project.getDisposed());
-            }
-        }, null, null);
+    public FastBuilderActionHandler() {
+        super("Select Fields to Generate Builder");
     }
 
-    private void doGenerate(@NotNull Project project, PsiClass aClass) {
-        TemplateResource defaultTemplate = BuildTemplatesManager.getInstance().getDefaultTemplate();
+    @Nullable
+    @Override
+    protected JComponent getHeaderPanel(Project project) {
+        final JPanel panel = new JPanel(new BorderLayout(2, 2));
+        String message = CodeInsightBundle.message("generate.equals.hashcode.template");
+        panel.add(getHeaderPanel(project, BuilderTemplatesManager.getInstance(), message), BorderLayout.NORTH);
+        panel.add(getHeaderPanel(project, BuilderInitTemplatesManager.getInstance(), message), BorderLayout.SOUTH);
+        return panel;
+    }
 
-        String generateCode = GenerationUtil.velocityGenerateCode(aClass, Arrays.asList(aClass.getFields()), Collections.emptyMap(),
-                defaultTemplate.getTemplate(), 0, false);
-        PsiClass builderClass = JavaPsiFacade.getElementFactory(project)
+    @Override
+    protected ClassMember[] getAllOriginalMembers(PsiClass aClass) {
+        PsiField[] fields = aClass.getFields();
+        ArrayList<ClassMember> array = new ArrayList<>();
+        ImplicitUsageProvider[] implicitUsageProviders = Extensions.getExtensions(ImplicitUsageProvider.EP_NAME);
+        fieldLoop:
+        for (PsiField field : fields) {
+            if (field.hasModifierProperty(PsiModifier.STATIC)) continue;
+
+            if (field.hasModifierProperty(PsiModifier.FINAL) && field.getInitializer() != null) continue;
+
+            for (ImplicitUsageProvider provider : implicitUsageProviders) {
+                if (provider.isImplicitWrite(field)) continue fieldLoop;
+            }
+            array.add(new PsiFieldMember(field));
+        }
+        return array.toArray(ClassMember.EMPTY_ARRAY);
+    }
+
+    @NotNull
+    @Override
+    protected List<? extends GenerationInfo> generateMemberPrototypes(PsiClass aClass, ClassMember[] members) throws IncorrectOperationException {
+        List<GenerationInfo> result = new ArrayList<>();
+        List<PsiField> psiFields = getPsiFields(members);
+        result.add(generateBuilderInitMethod(aClass, psiFields));
+        result.add(generateBuilderClass(aClass, psiFields));
+        return result;
+    }
+
+    private PsiGenerationInfo<PsiMethod> generateBuilderInitMethod(PsiClass aClass, List<PsiField> psiFields) {
+        String templateMacro = BuilderInitTemplatesManager.getInstance().getDefaultTemplate().getTemplate();
+        String generateCode = GenerationUtil.velocityGenerateCode(aClass, psiFields, Collections.emptyMap(),
+                templateMacro, 0, false);
+        PsiMethod builderInitMethod = JavaPsiFacade.getElementFactory(aClass.getProject())
+                .createMethodFromText(generateCode, aClass);
+        return new PsiGenerationInfo<>(builderInitMethod);
+    }
+
+    private PsiGenerationInfo<PsiClass> generateBuilderClass(PsiClass aClass, List<PsiField> psiFields) {
+        String templateMacro = BuilderTemplatesManager.getInstance().getDefaultTemplate().getTemplate();
+        String generateCode = GenerationUtil.velocityGenerateCode(aClass, psiFields, Collections.emptyMap(),
+                templateMacro, 0, false);
+        PsiClass builderClass = JavaPsiFacade.getElementFactory(aClass.getProject())
                 .createClassFromText(generateCode, aClass).getInnerClasses()[0];
-        aClass.add(builderClass);
+        return new PsiGenerationInfo<>(builderClass);
+    }
 
-        // generate new Builder method
-        PsiMethod newBuilderMethod = JavaPsiFacade.getElementFactory(project).createMethodFromText("public static Builder builder() {\n" +
-                "        return new Builder();\n" +
-                "    }", aClass);
-        aClass.add(newBuilderMethod);
+    private List<PsiField> getPsiFields(ClassMember[] members) {
+        List<PsiField> psiFields = new ArrayList<>(members.length);
+        for (ClassMember member : members) {
+            if (member instanceof PsiFieldMember) {
+                psiFields.add(((PsiFieldMember) member).getElement());
+            }
+        }
+        return psiFields;
+    }
+
+    @Override
+    protected GenerationInfo[] generateMemberPrototypes(PsiClass aClass, ClassMember originalMember) throws IncorrectOperationException {
+        return new GenerationInfo[0];
+    }
+
+    @Override
+    protected String getHelpId() {
+        return "Generate_Builder_Dialog";
+    }
+
+    @Override
+    protected String getNothingFoundMessage() {
+        return "No fields have been found to generate builder for";
+    }
+
+    @Override
+    protected String getNothingAcceptedMessage() {
+        return "No fields have been found to generate builder for";
     }
 
 }
