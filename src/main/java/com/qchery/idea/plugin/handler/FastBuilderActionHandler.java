@@ -3,6 +3,8 @@ package com.qchery.idea.plugin.handler;
 import com.intellij.codeInsight.CodeInsightBundle;
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider;
 import com.intellij.codeInsight.generation.*;
+import com.intellij.ide.util.MemberChooser;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.extensions.Extensions;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.*;
@@ -35,6 +37,21 @@ public class FastBuilderActionHandler extends GenerateGetterSetterHandlerBase {
         panel.add(getHeaderPanel(project, BuilderTemplatesManager.getInstance(), message), BorderLayout.NORTH);
         panel.add(getHeaderPanel(project, BuilderInitTemplatesManager.getInstance(), message), BorderLayout.SOUTH);
         return panel;
+    }
+
+    @Nullable
+    protected ClassMember[] chooseMembers(ClassMember[] members,
+                                          boolean allowEmptySelection,
+                                          boolean copyJavadocCheckbox,
+                                          Project project,
+                                          @Nullable Editor editor) {
+        MemberChooser<ClassMember> chooser = createMembersChooser(members, allowEmptySelection, copyJavadocCheckbox, project);
+        // choose all elements as default
+        chooser.selectElements(members);
+        chooser.show();
+        myToCopyJavaDoc = chooser.isCopyJavadoc();
+        final List<ClassMember> list = chooser.getSelectedElements();
+        return list == null ? null : list.toArray(ClassMember.EMPTY_ARRAY);
     }
 
     @Override

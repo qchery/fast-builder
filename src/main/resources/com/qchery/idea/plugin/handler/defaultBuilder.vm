@@ -1,12 +1,15 @@
-public static class Builder {
+public static final class ${classname}Builder {
 
 #foreach($field in $fields)
 private $field.type $field.name;
 #end
 
+private ${classname}Builder() {
+}
+
 #foreach($field in $fields)
 #set($paramName = $helper.getParamName($field, $project))
-public Builder set$StringUtil.capitalizeWithJavaBeanConvention($StringUtil.sanitizeJavaIdentifier($helper.getPropertyName($field, $project)))($field.type $paramName) {
+public ${classname}Builder $StringUtil.sanitizeJavaIdentifier($helper.getPropertyName($field, $project))($field.type $paramName) {
 #if ($field.name == $paramName)
   this.##
 #end
@@ -16,10 +19,11 @@ return this;
 #end
 
 public $classname build() {
-  $classname result = new $classname();
+#set($resultName = $StringUtil.decapitalize($classname))
+  $classname $resultName = new $classname();
 #foreach($field in $fields)
-  result.$field.name = this.$field.name;
+  $resultName.$field.name = this.$field.name;
 #end
-  return result;
+  return $resultName;
 }
 }
